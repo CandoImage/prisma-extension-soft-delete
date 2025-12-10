@@ -1,6 +1,6 @@
 import { NestedParams } from "@roundtreasury/prisma-extension-nested-operations";
 
-import type { BaseDMMF } from "@prisma/client/runtime/library";
+import type { BaseDMMF } from "@prisma/client/runtime/client";
 import { Context, ModelConfig } from "../types";
 import { addDeletedToSelect } from "../utils/nestedReads";
 
@@ -10,8 +10,9 @@ export const createContext = (dmmf: BaseDMMF): Context => {
 
   dmmf.datamodel.models.forEach((model) => {
     // add unique fields derived from indexes
+    // Prisma 7 removed uniqueFields from DMMF, use fallback empty array
     const uniqueIndexFields: string[] = [];
-    model.uniqueFields.forEach((field) => {
+    (model.uniqueFields || []).forEach((field) => {
       uniqueIndexFields.push(field.join("_"));
     });
     uniqueIndexFieldsByModel[model.name] = uniqueIndexFields;
@@ -118,7 +119,7 @@ export const createUpdateParams: CreateParams = (_, config, params) => {
     !params.args?.__passUpdateThrough
   ) {
     throw new Error(
-      `prisma-extension-soft-delete: update of model "${params.model}" through "${params.scope?.parentParams.model}.${params.scope.relations.to.name}" found. Updates of soft deleted models through a toOne relation is not supported as it is possible to update a soft deleted record.`
+      `prisma-extension-soft-delete: update of model "${String(params.model)}" through "${String(params.scope?.parentParams.model)}.${params.scope.relations.to.name}" found. Updates of soft deleted models through a toOne relation is not supported as it is possible to update a soft deleted record.`
     );
   }
 
@@ -153,7 +154,7 @@ export const createUpdateManyParams: CreateParams = (_, config, params) => {
 export const createUpsertParams: CreateParams = (_, __, params) => {
   if (params.scope?.relations && !params.scope.relations.to.isList) {
     throw new Error(
-      `prisma-extension-soft-delete: upsert of model "${params.model}" through "${params.scope?.parentParams.model}.${params.scope.relations.to.name}" found. Upserts of soft deleted models through a toOne relation is not supported as it is possible to update a soft deleted record.`
+      `prisma-extension-soft-delete: upsert of model "${String(params.model)}" through "${String(params.scope?.parentParams.model)}.${params.scope.relations.to.name}" found. Upserts of soft deleted models through a toOne relation is not supported as it is possible to update a soft deleted record.`
     );
   }
 
@@ -166,17 +167,18 @@ function validateFindUniqueParams(
   config: ModelConfig
 ): void {
   const { uniqueIndexFieldsByModel } = context;
-  const uniqueIndexFields = uniqueIndexFieldsByModel[params.model || ""] || [];
+  const modelKey = String(params.model || "");
+  const uniqueIndexFields = uniqueIndexFieldsByModel[modelKey] || [];
   const uniqueIndexField = Object.keys(params.args?.where || {}).find((key) =>
     uniqueIndexFields.includes(key)
   );
 
   // when unique index field is found it is not possible to use findFirst.
-  // Instead warn the user that soft-deleted models will not be excluded from
+  // Instead, warn the user that soft-deleted models will not be excluded from
   // this query unless warnForUniqueIndexes is false.
   if (uniqueIndexField && !config.allowCompoundUniqueIndexWhere) {
     throw new Error(
-      `prisma-extension-soft-delete: query of model "${params.model}" through compound unique index field "${uniqueIndexField}" found. Queries of soft deleted models through a unique index are not supported. Set "allowCompoundUniqueIndexWhere" to true to override this behaviour.`
+      `prisma-extension-soft-delete: query of model "${String(params.model)}" through compound unique index field "${uniqueIndexField}" found. Queries of soft deleted models through a unique index are not supported. Set "allowCompoundUniqueIndexWhere" to true to override this behaviour.`
     );
   }
 }
@@ -187,8 +189,9 @@ function shouldPassFindUniqueParamsThrough(
   config: ModelConfig
 ): boolean {
   const { uniqueFieldsByModel, uniqueIndexFieldsByModel } = context;
-  const uniqueFields = uniqueFieldsByModel[params.model || ""] || [];
-  const uniqueIndexFields = uniqueIndexFieldsByModel[params.model || ""] || [];
+  const modelKey = String(params.model || "");
+  const uniqueFields = uniqueFieldsByModel[modelKey] || [];
+  const uniqueIndexFields = uniqueIndexFieldsByModel[modelKey] || [];
   const uniqueIndexField = Object.keys(params.args?.where || {}).find((key) =>
     uniqueIndexFields.includes(key)
   );
@@ -410,9 +413,14 @@ export const createWhereParams: CreateParams = (_, config, params) => {
 };
 
 export const createIncludeParams: CreateParams = (_, config, params) => {
+  // Prisma 7 compatibility: `where` inside `include` is only allowed for to-many (list) relations.
+  // For to-one relations, Prisma 7 throws "Unknown argument `where`".
+  // We must check explicitly for isList === true before adding where clause.
+  const isList = params.scope?.relations?.to.isList;
+
   // includes of toOne relation cannot filter deleted records using params
   // instead ensure that the deleted field is selected and filter the results
-  if (params.scope?.relations?.to.isList === false) {
+  if (isList === false) {
     if (params.args?.select && !params.args?.select[config.field]) {
       return {
         params: addDeletedToSelect(params, config),
@@ -423,20 +431,27 @@ export const createIncludeParams: CreateParams = (_, config, params) => {
     return { params };
   }
 
-  return {
-    params: {
-      ...params,
-      args: {
-        ...params.args,
-        where: {
-          ...params.args?.where,
-          // allow overriding the deleted field in where
-          [config.field]:
-            params.args?.where?.[config.field] || config.createValue(false),
+  // Only add where filter for list relations (isList === true)
+  // When isList is undefined (unknown relation type), skip to avoid Prisma 7 errors
+  if (isList === true) {
+    return {
+      params: {
+        ...params,
+        args: {
+          ...params.args,
+          where: {
+            ...params.args?.where,
+            // allow overriding the deleted field in where
+            [config.field]:
+              params.args?.where?.[config.field] || config.createValue(false),
+          },
         },
       },
-    },
-  };
+    };
+  }
+
+  // isList is undefined - don't add where to be safe with Prisma 7
+  return { params };
 };
 
 export const createSelectParams: CreateParams = (_, config, params) => {
@@ -445,8 +460,11 @@ export const createSelectParams: CreateParams = (_, config, params) => {
     return { params };
   }
 
+  // Prisma 7 compatibility: same logic as createIncludeParams
+  const isList = params.scope?.relations?.to.isList;
+
   // selects of toOne relation cannot filter deleted records using params
-  if (params.scope?.relations?.to.isList === false) {
+  if (isList === false) {
     if (params.args?.select && !params.args.select[config.field]) {
       return {
         params: addDeletedToSelect(params, config),
@@ -457,18 +475,24 @@ export const createSelectParams: CreateParams = (_, config, params) => {
     return { params };
   }
 
-  return {
-    params: {
-      ...params,
-      args: {
-        ...params.args,
-        where: {
-          ...params.args?.where,
-          // allow overriding the deleted field in where
-          [config.field]:
-            params.args?.where?.[config.field] || config.createValue(false),
+  // Only add where filter for list relations (isList === true)
+  if (isList === true) {
+    return {
+      params: {
+        ...params,
+        args: {
+          ...params.args,
+          where: {
+            ...params.args?.where,
+            // allow overriding the deleted field in where
+            [config.field]:
+              params.args?.where?.[config.field] || config.createValue(false),
+          },
         },
       },
-    },
-  };
+    };
+  }
+
+  // isList is undefined - don't add where to be safe with Prisma 7
+  return { params };
 };

@@ -1,8 +1,9 @@
-import { Prisma, PrismaClient, Profile, User } from "@prisma/client";
-import faker from "faker";
+import { Prisma, PrismaClient, Profile, User } from "../../prisma/generated/client";
+import { faker } from '@faker-js/faker';
 
 import { createSoftDeleteExtension } from "../../src";
 import client from "./client";
+import {PrismaPg} from "@prisma/adapter-pg";
 
 describe("fluent", () => {
   let testClient: any;
@@ -10,7 +11,8 @@ describe("fluent", () => {
   let user: User;
 
   beforeAll(async () => {
-    testClient = new PrismaClient();
+    const adapter = new PrismaPg({connectionString: process.env.DATABASE_URL!});
+    testClient = new PrismaClient({adapter});
     testClient = testClient.$extends(
       createSoftDeleteExtension({
         models: { Comment: true, Profile: true },
@@ -26,7 +28,7 @@ describe("fluent", () => {
     user = await client.user.create({
       data: {
         email: faker.internet.email(),
-        name: faker.name.findName(),
+        name: faker.person.fullName(),
         profileId: profile.id,
       },
     });

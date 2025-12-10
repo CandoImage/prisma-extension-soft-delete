@@ -1,6 +1,6 @@
 import { createSoftDeleteExtension } from "../../src";
 import { MockClient } from "./utils/mockClient";
-import { Prisma } from "@prisma/client";
+import { Prisma } from "../../prisma/generated/client";
 
 describe("count", () => {
   it("does not change count action if model is not in the list", async () => {

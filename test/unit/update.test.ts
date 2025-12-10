@@ -1,6 +1,6 @@
 import { createSoftDeleteExtension } from "../../src";
 import { MockClient } from "./utils/mockClient";
-import { Prisma } from "@prisma/client";
+import { Prisma } from "../../prisma/generated/client";
 
 describe("update", () => {
   it("does not change update action if model is not in the list", async () => {
@@ -58,7 +58,7 @@ describe("update", () => {
           },
         },
       })
-    ).rejects.toThrowError(
+    ).rejects.toThrow(
       'prisma-extension-soft-delete: update of model "User" through "Post.author" found. Updates of soft deleted models through a toOne relation is not supported as it is possible to update a soft deleted record.'
     );
   });

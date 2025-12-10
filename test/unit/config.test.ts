@@ -1,8 +1,8 @@
-import faker from "faker";
+import { faker } from '@faker-js/faker';
 
 import { createSoftDeleteExtension } from "../../src";
 import { MockClient } from "./utils/mockClient";
-import { Prisma } from "@prisma/client";
+import { Prisma } from "../../prisma/generated/client";
 
 describe("config", () => {
   it('does not soft delete models where config is passed as "false"', async () => {
@@ -106,7 +106,7 @@ describe("config", () => {
         },
         dmmf: Prisma.dmmf,
       });
-    }).toThrowError(
+    }).toThrow(
       "prisma-extension-soft-delete: defaultConfig.field is required"
     );
   });
@@ -123,7 +123,7 @@ describe("config", () => {
         },
         dmmf: Prisma.dmmf,
       });
-    }).toThrowError(
+    }).toThrow(
       "prisma-extension-soft-delete: defaultConfig.createValue is required"
     );
   });

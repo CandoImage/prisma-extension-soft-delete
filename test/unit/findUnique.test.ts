@@ -1,6 +1,6 @@
 import { createSoftDeleteExtension } from "../../src";
 import { MockClient } from "./utils/mockClient";
-import { Prisma } from "@prisma/client";
+import { Prisma } from "../../prisma/generated/client";
 
 describe("findUnique", () => {
   it("does not change findUnique params if model is not in the list", async () => {
@@ -101,7 +101,7 @@ describe("findUnique", () => {
           },
         },
       })
-    ).rejects.toThrowError(
+    ).rejects.toThrow(
       `prisma-extension-soft-delete: query of model "User" through compound unique index field "name_email" found. Queries of soft deleted models through a unique index are not supported. Set "allowCompoundUniqueIndexWhere" to true to override this behaviour.`
     );
   });

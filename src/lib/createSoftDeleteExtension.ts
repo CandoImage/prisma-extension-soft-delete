@@ -1,5 +1,5 @@
-import type { Prisma } from "@prisma/client";
-import { Prisma as PrismaExtensions } from "@prisma/client/extension";
+ 
+import { Prisma } from "@prisma/client/extension";
 import {
   NestedOperation,
   withNestedOperations,
@@ -57,13 +57,12 @@ export function createSoftDeleteExtension({
     );
   }
 
-  const modelConfig: Partial<Record<Prisma.ModelName, ModelConfig>> = {};
+  const modelConfig: Record<string, ModelConfig> = {};
 
   Object.keys(models).forEach((model) => {
-    const modelName = model as Prisma.ModelName;
-    const config = models[modelName];
+    const config = models[model];
     if (config) {
-      modelConfig[modelName] =
+      modelConfig[model] =
         typeof config === "boolean" && config ? defaultConfig : config;
     }
   });
@@ -73,7 +72,7 @@ export function createSoftDeleteExtension({
   const createParamsByModel = Object.keys(modelConfig).reduce<
     Record<string, Record<string, ConfigBound<CreateParams> | undefined>>
   >((acc, model) => {
-    const config = modelConfig[model as Prisma.ModelName]!;
+    const config = modelConfig[model]!;
     return {
       ...acc,
       [model]: {
@@ -108,7 +107,7 @@ export function createSoftDeleteExtension({
   const modifyResultByModel = Object.keys(modelConfig).reduce<
     Record<string, Record<string, ConfigBound<ModifyResult> | undefined>>
   >((acc, model) => {
-    const config = modelConfig[model as Prisma.ModelName]!;
+    const config = modelConfig[model]!;
     return {
       ...acc,
       [model]: {
@@ -121,14 +120,14 @@ export function createSoftDeleteExtension({
   // before handling root params generate deleted value so it is consistent
   // for the query. Add it to root params and get it from scope?
 
-  return PrismaExtensions.defineExtension((client) => {
+  return Prisma.defineExtension((client) => {
     return client.$extends({
       query: {
         $allModels: {
-          // @ts-expect-error - we don't know what the client is
+          // @ts-ignore - withNestedOperations types not compatible with Prisma 7
           $allOperations: withNestedOperations({
             dmmf,
-            async $rootOperation(initialParams) {
+            async $rootOperation(initialParams: any) {
               const createParams =
                 createParamsByModel[initialParams.model || ""]?.[
                   initialParams.operation
@@ -143,20 +142,20 @@ export function createSoftDeleteExtension({
                 params.operation !== initialParams.operation;
 
               const result = operationChanged
-                ? // @ts-expect-error - we don't know what the client is
-                  await client[model[0].toLowerCase() + model.slice(1)][
+                ? // @ts-ignore - dynamic model access
+                  await (client as any)[model[0].toLowerCase() + model.slice(1)][
                     params.operation
                   ](params.args)
                 : await params.query(params.args);
 
               const modifyResult =
-                modifyResultByModel[params.model || ""]?.[params.operation];
+                modifyResultByModel[params.model as string || ""]?.[params.operation as string];
 
               if (!modifyResult) return result;
 
               return modifyResult(result, params, ctx);
             },
-            async $allNestedOperations(initialParams) {
+            async $allNestedOperations(initialParams: any) {
               const createParams =
                 createParamsByModel[initialParams.model || ""]?.[
                   initialParams.operation
@@ -172,7 +171,7 @@ export function createSoftDeleteExtension({
               );
 
               const modifyResult =
-                modifyResultByModel[params.model || ""]?.[params.operation];
+                modifyResultByModel[params.model as string || ""]?.[params.operation as string];
 
               if (!modifyResult) return result;
 

@@ -1,5 +1,4 @@
-import type { Prisma } from "@prisma/client";
-import type { BaseDMMF } from "@prisma/client/runtime/library";
+import type { BaseDMMF } from "@prisma/client/runtime/client";
 
 export type Context = {
   uniqueFieldsByModel: Record<string, string[]>;
@@ -13,8 +12,9 @@ export type ModelConfig = {
   allowCompoundUniqueIndexWhere?: boolean;
 };
 
+// Use string keys instead of Prisma.ModelName since that requires a generated client
 export type Config = {
-  models: Partial<Record<Prisma.ModelName, ModelConfig | boolean>>;
+  models: Record<string, ModelConfig | boolean>;
   defaultConfig?: ModelConfig;
   dmmf: BaseDMMF;
 };

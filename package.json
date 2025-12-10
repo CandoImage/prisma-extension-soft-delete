@@ -1,60 +1,68 @@
 {
-  "name": "@roundtreasury/prisma-extension-soft-delete",
-  "version": "1.2.0",
-  "description": "Prisma extension for soft deleting records",
+  "name": "@cando/prisma-extension-soft-delete",
+  "version": "2.0.0",
+  "description": "Prisma extension for soft deleting records - Prisma 7 compatible fork",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "module": "dist/esm/index.js",
   "scripts": {
+    "postinstall": "node scripts/patch-nested-operations.js",
     "build": "npm-run-all build:cjs build:esm",
     "build:cjs": "tsc -p tsconfig.build.json",
     "build:esm": "tsc -p tsconfig.esm.json",
     "test:unit": "prisma generate && jest --config jest.config.unit.js",
     "test:e2e": "./test/scripts/run-with-postgres.sh jest --config jest.config.e2e.js --runInBand",
     "test": "./test/scripts/run-with-postgres.sh jest --runInBand",
-    "lint": "eslint ./src  --fix --ext .ts",
+    "lint": "eslint ./src --fix",
     "typecheck": "npm run build:cjs -- --noEmit && npm run build:esm -- --noEmit",
     "validate": "kcd-scripts validate lint,typecheck,test",
     "semantic-release": "semantic-release",
     "doctoc": "doctoc ."
   },
   "files": [
-    "dist"
+    "dist",
+    "scripts"
   ],
   "keywords": [
     "prisma",
+    "prisma7",
     "client",
-    "middleware"
+    "soft-delete",
+    "extension"
   ],
   "author": "Olivier Wilkinson",
+  "contributors": [
+    "Round Treasury (fork)",
+    "Cando (Prisma 7 compatibility)"
+  ],
   "license": "Apache-2.0",
   "dependencies": {
+    "@prisma/adapter-pg": "^7.1.0",
     "@roundtreasury/prisma-extension-nested-operations": "1.5.0"
   },
   "peerDependencies": {
-    "@prisma/client": "*"
+    "@prisma/client": ">=7.0.0"
   },
   "devDependencies": {
-    "@prisma/client": "^5.4.2",
-    "@types/faker": "^5.5.9",
-    "@types/jest": "^29.2.5",
-    "@typescript-eslint/eslint-plugin": "^4.14.0",
-    "@typescript-eslint/parser": "^4.14.0",
-    "doctoc": "^2.2.0",
-    "eslint": "^7.6.0",
-    "faker": "^5.0.0",
-    "jest": "^29.3.1",
-    "kcd-scripts": "^5.0.0",
+    "@faker-js/faker": "^8.4.1",
+    "@prisma/client": "^7.1.0",
+    "@types/jest": "^30.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.49.0",
+    "@typescript-eslint/parser": "^8.49.0",
+    "doctoc": "^2.2.1",
+    "eslint": "^9.39.1",
+    "jest": "^30.2.0",
+    "kcd-scripts": "^16.0.0",
     "npm-run-all": "^4.1.5",
-    "prisma": "^5.4.2",
-    "semantic-release": "^17.0.2",
-    "ts-jest": "^29.0.3",
-    "ts-node": "^9.1.1",
-    "typescript": "^4.1.3"
+    "prisma": "^7.1.0",
+    "semantic-release": "19.0.3",
+    "ts-jest": "^29.4.6",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/round-cash/prisma-extension-soft-delete.git"
+    "url": "https://github.com/CandoImage/prisma-extension-soft-delete.git"
   },
   "release": {
     "branches": [

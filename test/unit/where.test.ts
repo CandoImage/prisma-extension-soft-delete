@@ -1,8 +1,8 @@
-import faker from "faker";
+import { faker } from '@faker-js/faker';
 
 import { createSoftDeleteExtension } from "../../src";
 import { MockClient } from "./utils/mockClient";
-import { Prisma } from "@prisma/client";
+import { Prisma } from "../../prisma/generated/client";
 
 describe("where", () => {
   it("does not change where action if model is not in the list", async () => {
@@ -57,7 +57,7 @@ describe("where", () => {
               { post: { content: faker.lorem.sentence() } },
               { post: { content: faker.lorem.sentence() } },
             ],
-            NOT: { post: { is: { authorName: faker.name.findName() } } },
+            NOT: { post: { is: { authorName: faker.person.fullName() } } },
             content: faker.lorem.sentence(),
             post: {
               isNot: {
@@ -187,7 +187,7 @@ describe("where", () => {
             NOT: {
               post: {
                 is: {
-                  authorName: faker.name.findName(),
+                  authorName: faker.person.fullName(),
                 },
               },
             },
@@ -270,7 +270,7 @@ describe("where", () => {
               { post: { content: faker.lorem.sentence() } },
               { post: { content: faker.lorem.sentence() } },
             ],
-            NOT: { post: { is: { authorName: faker.name.findName() } } },
+            NOT: { post: { is: { authorName: faker.person.fullName() } } },
             content: faker.lorem.sentence(),
             post: {
               isNot: {
@@ -341,7 +341,7 @@ describe("where", () => {
             ],
             NOT: {
               post: {
-                is: { deleted: true, authorName: faker.name.findName() },
+                is: { deleted: true, authorName: faker.person.fullName() },
               },
             },
             content: faker.lorem.sentence(),
