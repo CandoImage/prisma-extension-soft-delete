@@ -10,7 +10,32 @@
 const fs = require('fs');
 const path = require('path');
 
-const nestedOpsPath = path.join(__dirname, '..', 'node_modules', '@roundtreasury', 'prisma-extension-nested-operations', 'dist');
+/**
+ * Find @roundtreasury/prisma-extension-nested-operations in multiple locations:
+ * 1. Local node_modules (when not hoisted)
+ * 2. Host project's node_modules (when hoisted by npm)
+ * 3. Even higher for monorepo setups
+ */
+function findNestedOpsPath() {
+  const possiblePaths = [
+    // Local (inside this package)
+    path.join(__dirname, '..', 'node_modules', '@roundtreasury', 'prisma-extension-nested-operations', 'dist'),
+    // Hoisted to host project (npm hoisting) - this package is at node_modules/@candoimage/prisma-extension-soft-delete
+    path.join(__dirname, '..', '..', '..', '@roundtreasury', 'prisma-extension-nested-operations', 'dist'),
+    // Hoisted even higher (monorepo case)
+    path.join(__dirname, '..', '..', '..', '..', '..', '@roundtreasury', 'prisma-extension-nested-operations', 'dist'),
+  ];
+
+  for (const p of possiblePaths) {
+    if (fs.existsSync(p)) {
+      console.log(`Found @roundtreasury/prisma-extension-nested-operations at: ${p}`);
+      return p;
+    }
+  }
+  return null;
+}
+
+const nestedOpsPath = findNestedOpsPath();
 
 // Replacement for cloneArgs.js that uses Prisma 7 compatible null checks
 const CLONE_ARGS_CJS = `"use strict";
@@ -169,9 +194,19 @@ function walkDir(dir, callback) {
   });
 }
 
-if (!fs.existsSync(nestedOpsPath)) {
+if (!nestedOpsPath) {
   console.log('No @roundtreasury/prisma-extension-nested-operations found, skipping patch.');
   process.exit(0);
+}
+
+// Check if already patched
+const cloneArgsCheck = path.join(nestedOpsPath, 'lib', 'utils', 'cloneArgs.js');
+if (fs.existsSync(cloneArgsCheck)) {
+  const content = fs.readFileSync(cloneArgsCheck, 'utf8');
+  if (content.includes('@prisma/client/runtime/client')) {
+    console.log('@roundtreasury/prisma-extension-nested-operations already patched for Prisma 7');
+    process.exit(0);
+  }
 }
 
 let patched = 0;
