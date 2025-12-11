@@ -5,7 +5,9 @@
     "outDir": "./dist/esm",
     "moduleResolution": "node",
     "declaration": true,
-    "noEmit": false
+    "noEmit": false,
+    "types": []
   },
-  "exclude": ["test", "dist"]
+  "include": ["src"],
+  "exclude": ["test", "dist", "node_modules", "prisma.config.ts"]
 }

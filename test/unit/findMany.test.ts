@@ -1,6 +1,6 @@
 import { createSoftDeleteExtension } from "../../src";
 import { MockClient } from "./utils/mockClient";
-import { Prisma } from "@prisma/client";
+import { Prisma } from "../../prisma/generated/client";
 
 describe("findMany", () => {
   it("does not change findMany params if model is not in the list", async () => {

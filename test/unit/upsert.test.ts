@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Prisma } from "../../prisma/generated/client";
 import { createSoftDeleteExtension } from "../../src";
 import { MockClient } from "./utils/mockClient";
 
@@ -110,7 +110,7 @@ describe("upsert", () => {
           },
         },
       })
-    ).rejects.toThrowError(
+    ).rejects.toThrow(
       'prisma-extension-soft-delete: upsert of model "User" through "Post.author" found. Upserts of soft deleted models through a toOne relation is not supported as it is possible to update a soft deleted record.'
     );
   });

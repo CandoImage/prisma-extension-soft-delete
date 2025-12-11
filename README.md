@@ -1,7 +1,12 @@
 <div align="center">
-<h1>Prisma Extension Soft Delete</h1>
+<h1>@cando/prisma-extension-soft-delete</h1>
 
-<p>Prisma extension for soft deleting records.</p>
+<p><strong>Prisma 7 compatible</strong> extension for soft deleting records.</p>
+
+<p>
+  This is a fork of <a href="https://github.com/olivierwilkinson/prisma-extension-soft-delete">prisma-extension-soft-delete</a>
+  (via <a href="https://github.com/round-cash/prisma-extension-soft-delete">round-cash fork</a>) with <strong>Prisma 7 compatibility fixes</strong>.
+</p>
 
 <p>
   Soft deleting records is a common pattern in many applications. This library provides an extension for Prisma that
@@ -12,6 +17,21 @@
 </p>
 
 </div>
+
+<hr />
+
+## Prisma 7 Compatibility
+
+This fork includes the following fixes for Prisma 7:
+
+1. **uniqueFields DMMF fix**: Prisma 7 removed `uniqueFields` from the DMMF model structure. This fork adds a fallback to prevent crashes.
+
+2. **include/select where fix**: Prisma 7 no longer allows `where` inside `include` blocks for to-one relations. This fork only adds `where` filters for to-many (list) relations.
+
+### Limitations
+
+- Compound unique indexes (`@@unique`) are not fully supported due to Prisma 7 DMMF changes
+- Use `findFirst` with explicit `deletedAt: null` filter for models with compound unique keys
 
 <hr />
 
@@ -58,7 +78,7 @@ This module is distributed via [npm][npm] and should be installed as one of your
 project's dependencies:
 
 ```
-npm install prisma-extension-soft-delete
+npm install @cando/prisma-extension-soft-delete
 ```
 
 `@prisma/client` is a peer dependency of this library, so you will need to

@@ -1,15 +1,17 @@
-import { Prisma, PrismaClient, User } from "@prisma/client";
-import faker from "faker";
+import { Prisma, PrismaClient, User } from "../../prisma/generated/client";
+import { faker } from '@faker-js/faker';
 
 import { createSoftDeleteExtension } from "../../src";
 import client from "./client";
+import {PrismaPg} from "@prisma/adapter-pg";
 
 describe("nested reads", () => {
   let testClient: any;
   let user: User;
 
   beforeAll(async () => {
-    testClient = new PrismaClient();
+    const adapter = new PrismaPg({connectionString: process.env.DATABASE_URL!});
+    testClient = new PrismaClient({adapter});
     testClient = testClient.$extends(
       createSoftDeleteExtension(
         { models: { Comment: true, Profile: true }, dmmf: Prisma.dmmf },
@@ -21,7 +23,7 @@ describe("nested reads", () => {
     user = await client.user.create({
       data: {
         email: faker.internet.email(),
-        name: faker.name.findName(),
+        name: faker.person.fullName(),
         profile: { create: { bio: "foo" } },
       },
     });

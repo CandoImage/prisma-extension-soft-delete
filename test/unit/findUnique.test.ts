@@ -1,6 +1,6 @@
 import { createSoftDeleteExtension } from "../../src";
 import { MockClient } from "./utils/mockClient";
-import { Prisma } from "@prisma/client";
+import { Prisma } from "../../prisma/generated/client";
 
 describe("findUnique", () => {
   it("does not change findUnique params if model is not in the list", async () => {
@@ -26,7 +26,9 @@ describe("findUnique", () => {
     );
 
     const queryResult = { id: 1, deleted: true };
-    client.user.findFirst.mockImplementation(
+    // Prisma 7+: findUnique is not converted to findFirst anymore
+    // because unique field info is not available in DMMF
+    extendedClient.user.findUnique.query.mockImplementation(
       () => Promise.resolve(queryResult) as any
     );
 
@@ -37,7 +39,11 @@ describe("findUnique", () => {
     expect(result).toEqual(queryResult);
   });
 
-  it("changes findUnique into findFirst and excludes deleted records", async () => {
+  // Prisma 7+: unique field info (isId, isUnique) is not available in DMMF
+  // The extension now adds deleted filter directly to findUnique instead of
+  // converting to findFirst. This is supported in Prisma 7+ where findUnique
+  // can filter by non-unique fields in the where clause.
+  it("adds deleted filter to findUnique and excludes deleted records", async () => {
     const client = new MockClient();
     const extendedClient = client.$extends(
       createSoftDeleteExtension({
@@ -50,14 +56,13 @@ describe("findUnique", () => {
       where: { id: 1 },
     });
 
-    // params have been modified
-    expect(client.user.findFirst).toHaveBeenCalledWith({
+    // Prisma 7+: params are modified but operation stays findUnique
+    expect(extendedClient.user.findUnique.query).toHaveBeenCalledWith({
       where: {
         id: 1,
         deleted: false,
       },
     });
-    expect(extendedClient.user.findUnique.query).not.toHaveBeenCalled();
   });
 
   it("allows explicitly querying for deleted records using findUnique", async () => {
@@ -73,17 +78,18 @@ describe("findUnique", () => {
       where: { id: 1, deleted: true },
     });
 
-    // params have not been modified
-    expect(client.user.findFirst).toHaveBeenCalledWith({
+    // Prisma 7+: params are modified to include explicit deleted value
+    expect(extendedClient.user.findUnique.query).toHaveBeenCalledWith({
       where: {
         id: 1,
         deleted: true,
       },
     });
-    expect(client.user.findUnique).not.toHaveBeenCalled();
   });
 
-  it("throws when trying to pass a findUnique where with a compound unique index field", async () => {
+  // Prisma 7+: compound unique index validation is skipped because uniqueFields
+  // info is not available in DMMF. The query will pass through with deleted filter.
+  it("adds deleted filter to findUnique with compound unique index field", async () => {
     const client = new MockClient();
     const extendedClient = client.$extends(
       createSoftDeleteExtension({
@@ -92,21 +98,28 @@ describe("findUnique", () => {
       })
     );
 
-    await expect(
-      extendedClient.user.findUnique({
-        where: {
-          name_email: {
-            name: "test",
-            email: "test@test.com",
-          },
+    await extendedClient.user.findUnique({
+      where: {
+        name_email: {
+          name: "test",
+          email: "test@test.com",
         },
-      })
-    ).rejects.toThrowError(
-      `prisma-extension-soft-delete: query of model "User" through compound unique index field "name_email" found. Queries of soft deleted models through a unique index are not supported. Set "allowCompoundUniqueIndexWhere" to true to override this behaviour.`
-    );
+      },
+    });
+
+    // Prisma 7+: deleted filter is added without throwing error
+    expect(extendedClient.user.findUnique.query).toHaveBeenCalledWith({
+      where: {
+        name_email: {
+          name: "test",
+          email: "test@test.com",
+        },
+        deleted: false,
+      },
+    });
   });
 
-  it('does not modify findUnique when compound unique index field used and "allowCompoundUniqueIndexWhere" is set to true', async () => {
+  it('adds deleted filter to findUnique when "allowCompoundUniqueIndexWhere" is set to true', async () => {
     const client = new MockClient();
     const extendedClient = client.$extends(
       createSoftDeleteExtension({
@@ -130,19 +143,19 @@ describe("findUnique", () => {
       },
     });
 
-    // params have not been modified
+    // Prisma 7+: deleted filter is added
     expect(extendedClient.user.findUnique.query).toHaveBeenCalledWith({
       where: {
         name_email: {
           name: "test",
           email: "test@test.com",
         },
+        deleted: false,
       },
     });
-    expect(client.user.findFirst).not.toHaveBeenCalled();
   });
 
-  it("does not modify findUnique to be a findFirst when no args passed", async () => {
+  it("adds deleted filter to findUnique when no args where passed", async () => {
     const client = new MockClient();
     const extendedClient = client.$extends(
       createSoftDeleteExtension({
@@ -154,14 +167,15 @@ describe("findUnique", () => {
     // @ts-expect-error testing if user doesn't pass args accidentally
     await extendedClient.user.findUnique(undefined);
 
-    // params have not been modified
-    expect(extendedClient.user.findUnique.query).toHaveBeenCalledWith(
-      undefined
-    );
-    expect(client.user.findFirst).not.toHaveBeenCalled();
+    // Prisma 7+: deleted filter is added even with undefined args
+    expect(extendedClient.user.findUnique.query).toHaveBeenCalledWith({
+      where: {
+        deleted: false,
+      },
+    });
   });
 
-  it("does not modify findUnique to be a findFirst when invalid where passed", async () => {
+  it("adds deleted filter to findUnique when invalid where passed", async () => {
     const client = new MockClient();
     const extendedClient = client.$extends(
       createSoftDeleteExtension({
@@ -172,52 +186,58 @@ describe("findUnique", () => {
 
     // @ts-expect-error testing if user doesn't pass where accidentally
     await extendedClient.user.findUnique({});
-    expect(extendedClient.user.findUnique.query).toHaveBeenCalledWith({});
-    client.user.findUnique.mockClear();
+    expect(extendedClient.user.findUnique.query).toHaveBeenCalledWith({
+      where: {
+        deleted: false,
+      },
+    });
+    extendedClient.user.findUnique.query.mockClear();
 
-    // expect empty where not to modify params
+    // expect empty where to add deleted filter
     // @ts-expect-error testing if user passes where without unique field
     await extendedClient.user.findUnique({ where: {} });
     expect(extendedClient.user.findUnique.query).toHaveBeenCalledWith({
-      where: {},
+      where: {
+        deleted: false,
+      },
     });
-    client.user.findUnique.mockClear();
+    extendedClient.user.findUnique.query.mockClear();
 
-    // expect where with undefined id field not to modify params
+    // expect where with undefined id field to add deleted filter
     await extendedClient.user.findUnique({ where: { id: undefined } });
     expect(extendedClient.user.findUnique.query).toHaveBeenCalledWith({
-      where: { id: undefined },
+      where: { id: undefined, deleted: false },
     });
-    client.user.findUnique.mockClear();
+    extendedClient.user.findUnique.query.mockClear();
 
-    // expect where with undefined unique field not to modify params
+    // expect where with undefined unique field to add deleted filter
     await extendedClient.user.findUnique({ where: { email: undefined } });
     expect(extendedClient.user.findUnique.query).toHaveBeenCalledWith({
-      where: { email: undefined },
+      where: { email: undefined, deleted: false },
     });
-    client.user.findUnique.mockClear();
+    extendedClient.user.findUnique.query.mockClear();
 
-    // expect where with undefined unique index field not to modify params
+    // expect where with undefined unique index field to add deleted filter
     await extendedClient.user.findUnique({ where: { name_email: undefined } });
     expect(extendedClient.user.findUnique.query).toHaveBeenCalledWith({
-      where: { name_email: undefined },
+      where: { name_email: undefined, deleted: false },
     });
-    client.user.findUnique.mockClear();
+    extendedClient.user.findUnique.query.mockClear();
 
-    // expect where with defined non-unique field
+    // expect where with defined non-unique field to add deleted filter
     // @ts-expect-error intentionally incorrect where
     await extendedClient.user.findUnique({ where: { name: "test" } });
     expect(extendedClient.user.findUnique.query).toHaveBeenCalledWith({
-      where: { name: "test" },
+      where: { name: "test", deleted: false },
     });
-    client.user.findUnique.mockClear();
+    extendedClient.user.findUnique.query.mockClear();
 
-    // expect where with defined non-unique field and undefined id field not to modify params
+    // expect where with defined non-unique field and undefined id field to add deleted filter
     await extendedClient.user.findUnique({
       where: { id: undefined, name: "test" },
     });
     expect(extendedClient.user.findUnique.query).toHaveBeenCalledWith({
-      where: { id: undefined, name: "test" },
+      where: { id: undefined, name: "test", deleted: false },
     });
   });
 });
