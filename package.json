@@ -1,5 +1,5 @@
 {
-  "name": "@cando/prisma-extension-soft-delete",
+  "name": "@candoimage/prisma-extension-soft-delete",
   "version": "2.0.0",
   "description": "Prisma extension for soft deleting records - Prisma 7 compatible fork",
   "main": "dist/index.js",
