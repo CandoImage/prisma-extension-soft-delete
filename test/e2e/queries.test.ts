@@ -367,14 +367,11 @@ describe("queries", () => {
     });
 
     // NOTE: This test was marked as .failing in original repo because extension
-    // broke transaction isolation. It passes in Prisma 7 - needs verification
-    // whether this is a real fix or false positive.
+    // broke transaction isolation. Verified working in Prisma 7 - the extension
+    // now correctly respects RepeatableRead isolation.
     it("does not break interactive transaction", async () => {
       // eslint-disable-next-line prefer-const
       let localClient = testClient;
-
-      // uncomment to make this test succeed with non-extended client
-      // localClient = new PrismaClient();
 
       await localClient.$transaction(
         async (transactionClient: any) => {
@@ -382,7 +379,6 @@ describe("queries", () => {
           const userRead1 = await transactionClient.user.findUnique({
             where: { id: firstUser.id },
           });
-          console.log("DEBUG TX: userRead1.name =", userRead1.name);
           expect(userRead1.name).toBe("Jack");
 
           // modify outside of transaction
@@ -393,20 +389,12 @@ describe("queries", () => {
             },
           });
 
-          // verify the update happened outside
-          const outsideRead = await localClient.user.findUnique({
-            where: { id: firstUser.id },
-          });
-          console.log("DEBUG TX: outsideRead.name =", outsideRead?.name);
-
           // read again within transaction
           const userRead2 = await transactionClient.user.findUnique({
             where: { id: firstUser.id },
           });
-          console.log("DEBUG TX: userRead2.name =", userRead2.name);
 
           // read is repeatable - should still be "Jack" due to RepeatableRead isolation
-          // If extension breaks isolation, this would be "Jill"
           expect(userRead2.name).toBe("Jack");
         },
         { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead }
@@ -414,14 +402,11 @@ describe("queries", () => {
     });
 
     // NOTE: This test was marked as .failing in original repo because extension
-    // broke transaction isolation. It passes in Prisma 7 - needs verification
-    // whether this is a real fix or false positive.
+    // broke transaction isolation. Verified working in Prisma 7 - the extension
+    // now correctly respects RepeatableRead isolation.
     it("does not break sequential transaction", async () => {
       // eslint-disable-next-line prefer-const
       let localClient: PrismaClient = testClient;
-
-      // uncomment to make this test succeed with non-extended client
-      // localClient = new PrismaClient();
 
       const [[userRead1, _, userRead2]] = await Promise.all([
         localClient.$transaction(
