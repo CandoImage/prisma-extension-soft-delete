@@ -112,9 +112,12 @@ export const createDeleteManyParams: CreateParams = (_, config, params) => {
 };
 
 export const createUpdateParams: CreateParams = (_, config, params) => {
+  // isList is computed by patched nested-operations library
+  const isList = params.scope?.relations?.to.isList;
+
   if (
     params.scope?.relations &&
-    !params.scope.relations.to.isList &&
+    isList === false &&
     !config.allowToOneUpdates &&
     !params.args?.__passUpdateThrough
   ) {
@@ -152,7 +155,10 @@ export const createUpdateManyParams: CreateParams = (_, config, params) => {
 };
 
 export const createUpsertParams: CreateParams = (_, __, params) => {
-  if (params.scope?.relations && !params.scope.relations.to.isList) {
+  // isList is computed by patched nested-operations library
+  const isList = params.scope?.relations?.to.isList;
+
+  if (params.scope?.relations && isList === false) {
     throw new Error(
       `prisma-extension-soft-delete: upsert of model "${String(params.model)}" through "${String(params.scope?.parentParams.model)}.${params.scope.relations.to.name}" found. Upserts of soft deleted models through a toOne relation is not supported as it is possible to update a soft deleted record.`
     );
@@ -217,6 +223,29 @@ export const createFindUniqueParams: CreateParams = (
   config,
   params
 ) => {
+  const { uniqueFieldsByModel } = context;
+  const modelKey = String(params.model || "");
+  const uniqueFields = uniqueFieldsByModel[modelKey] || [];
+
+  // Prisma 7+: unique field info not available in DMMF
+  // In this case, just add deleted filter without converting to findFirst
+  // Prisma 7 supports filtering by non-unique fields in findUnique where clause
+  if (uniqueFields.length === 0) {
+    return {
+      params: {
+        ...params,
+        args: {
+          ...params.args,
+          where: {
+            ...params.args?.where,
+            [config.field]:
+              params.args?.where?.[config.field] || config.createValue(false),
+          },
+        },
+      },
+    };
+  }
+
   if (shouldPassFindUniqueParamsThrough(context, params, config)) {
     return { params };
   }
@@ -245,6 +274,29 @@ export const createFindUniqueOrThrowParams: CreateParams = (
   config,
   params
 ) => {
+  const { uniqueFieldsByModel } = context;
+  const modelKey = String(params.model || "");
+  const uniqueFields = uniqueFieldsByModel[modelKey] || [];
+
+  // Prisma 7+: unique field info not available in DMMF
+  // In this case, just add deleted filter without converting to findFirstOrThrow
+  // Prisma 7 supports filtering by non-unique fields in findUniqueOrThrow where clause
+  if (uniqueFields.length === 0) {
+    return {
+      params: {
+        ...params,
+        args: {
+          ...params.args,
+          where: {
+            ...params.args?.where,
+            [config.field]:
+              params.args?.where?.[config.field] || config.createValue(false),
+          },
+        },
+      },
+    };
+  }
+
   if (shouldPassFindUniqueParamsThrough(context, params, config)) {
     return { params };
   }
@@ -415,7 +467,7 @@ export const createWhereParams: CreateParams = (_, config, params) => {
 export const createIncludeParams: CreateParams = (_, config, params) => {
   // Prisma 7 compatibility: `where` inside `include` is only allowed for to-many (list) relations.
   // For to-one relations, Prisma 7 throws "Unknown argument `where`".
-  // We must check explicitly for isList === true before adding where clause.
+  // isList is computed by patched nested-operations library
   const isList = params.scope?.relations?.to.isList;
 
   // includes of toOne relation cannot filter deleted records using params
@@ -461,6 +513,7 @@ export const createSelectParams: CreateParams = (_, config, params) => {
   }
 
   // Prisma 7 compatibility: same logic as createIncludeParams
+  // isList is computed by patched nested-operations library
   const isList = params.scope?.relations?.to.isList;
 
   // selects of toOne relation cannot filter deleted records using params
