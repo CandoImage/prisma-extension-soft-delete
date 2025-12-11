@@ -1,5 +1,5 @@
- 
 import { Prisma } from "@prisma/client/extension";
+import type { BaseDMMF } from "@prisma/client/runtime/client";
 import {
   NestedOperation,
   withNestedOperations,
@@ -28,6 +28,33 @@ import {
 import { Config, Context, ModelConfig } from "./types";
 import { ModifyResult, modifyReadResult } from "./helpers/modifyResult";
 
+/**
+ * Extract DMMF from Prisma client instance
+ */
+function extractDmmfFromClient(client: any): BaseDMMF | null {
+  // Try to get from _runtimeDataModel (Prisma 7+)
+  if (client._runtimeDataModel) {
+    return {
+      datamodel: {
+        models: Object.entries(client._runtimeDataModel.models).map(
+          ([name, model]: [string, any]) => ({
+            name,
+            fields: model.fields || [],
+            uniqueFields: model.uniqueFields || [],
+            uniqueIndexes: model.uniqueIndexes || [],
+            primaryKey: model.primaryKey,
+            dbName: model.dbName ?? null,
+            schema: model.schema ?? null,
+          })
+        ),
+        enums: [],
+        types: [],
+      },
+    };
+  }
+  return null;
+}
+
 type ConfigBound<F> = F extends (
   c: Context,
   x: ModelConfig,
@@ -44,7 +71,7 @@ export function createSoftDeleteExtension({
     allowToOneUpdates: false,
     allowCompoundUniqueIndexWhere: false,
   },
-  dmmf,
+  dmmf: explicitDmmf,
 }: Config) {
   if (!defaultConfig.field) {
     throw new Error(
@@ -67,60 +94,67 @@ export function createSoftDeleteExtension({
     }
   });
 
-  const context = createContext(dmmf);
-
-  const createParamsByModel = Object.keys(modelConfig).reduce<
-    Record<string, Record<string, ConfigBound<CreateParams> | undefined>>
-  >((acc, model) => {
-    const config = modelConfig[model]!;
-    return {
-      ...acc,
-      [model]: {
-        delete: createDeleteParams.bind(null, context, config),
-        deleteMany: createDeleteManyParams.bind(null, context, config),
-        update: createUpdateParams.bind(null, context, config),
-        updateMany: createUpdateManyParams.bind(null, context, config),
-        upsert: createUpsertParams.bind(null, context, config),
-        findFirst: createFindFirstParams.bind(null, context, config),
-        findFirstOrThrow: createFindFirstOrThrowParams.bind(
-          null,
-          context,
-          config
-        ),
-        findUnique: createFindUniqueParams.bind(null, context, config),
-        findUniqueOrThrow: createFindUniqueOrThrowParams.bind(
-          null,
-          context,
-          config
-        ),
-        findMany: createFindManyParams.bind(null, context, config),
-        count: createCountParams.bind(null, context, config),
-        aggregate: createAggregateParams.bind(null, context, config),
-        where: createWhereParams.bind(null, context, config),
-        include: createIncludeParams.bind(null, context, config),
-        select: createSelectParams.bind(null, context, config),
-        groupBy: createGroupByParams.bind(null, context, config),
-      },
-    };
-  }, {});
-
-  const modifyResultByModel = Object.keys(modelConfig).reduce<
-    Record<string, Record<string, ConfigBound<ModifyResult> | undefined>>
-  >((acc, model) => {
-    const config = modelConfig[model]!;
-    return {
-      ...acc,
-      [model]: {
-        include: modifyReadResult.bind(null, context, config),
-        select: modifyReadResult.bind(null, context, config),
-      },
-    };
-  }, {});
-
-  // before handling root params generate deleted value so it is consistent
-  // for the query. Add it to root params and get it from scope?
-
   return Prisma.defineExtension((client) => {
+    // Resolve DMMF: use explicit if provided, otherwise extract from client
+    const dmmf = explicitDmmf ?? extractDmmfFromClient(client);
+
+    if (!dmmf) {
+      throw new Error(
+        "prisma-extension-soft-delete: Could not extract DMMF from client. " +
+          "Please pass dmmf explicitly: createSoftDeleteExtension({ dmmf: Prisma.dmmf, ... })"
+      );
+    }
+
+    const context = createContext(dmmf);
+
+    const createParamsByModel = Object.keys(modelConfig).reduce<
+      Record<string, Record<string, ConfigBound<CreateParams> | undefined>>
+    >((acc, model) => {
+      const config = modelConfig[model]!;
+      return {
+        ...acc,
+        [model]: {
+          delete: createDeleteParams.bind(null, context, config),
+          deleteMany: createDeleteManyParams.bind(null, context, config),
+          update: createUpdateParams.bind(null, context, config),
+          updateMany: createUpdateManyParams.bind(null, context, config),
+          upsert: createUpsertParams.bind(null, context, config),
+          findFirst: createFindFirstParams.bind(null, context, config),
+          findFirstOrThrow: createFindFirstOrThrowParams.bind(
+            null,
+            context,
+            config
+          ),
+          findUnique: createFindUniqueParams.bind(null, context, config),
+          findUniqueOrThrow: createFindUniqueOrThrowParams.bind(
+            null,
+            context,
+            config
+          ),
+          findMany: createFindManyParams.bind(null, context, config),
+          count: createCountParams.bind(null, context, config),
+          aggregate: createAggregateParams.bind(null, context, config),
+          where: createWhereParams.bind(null, context, config),
+          include: createIncludeParams.bind(null, context, config),
+          select: createSelectParams.bind(null, context, config),
+          groupBy: createGroupByParams.bind(null, context, config),
+        },
+      };
+    }, {});
+
+    const modifyResultByModel = Object.keys(modelConfig).reduce<
+      Record<string, Record<string, ConfigBound<ModifyResult> | undefined>>
+    >((acc, model) => {
+      const config = modelConfig[model]!;
+      return {
+        ...acc,
+        [model]: {
+          include: modifyReadResult.bind(null, context, config),
+          select: modifyReadResult.bind(null, context, config),
+        },
+      };
+    }, {});
+
     return client.$extends({
       query: {
         $allModels: {

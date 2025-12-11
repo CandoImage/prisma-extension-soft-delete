@@ -16,5 +16,19 @@ export type ModelConfig = {
 export type Config = {
   models: Record<string, ModelConfig | boolean>;
   defaultConfig?: ModelConfig;
-  dmmf: BaseDMMF;
+  /**
+   * DMMF (Data Model Meta Format) - optional in Prisma 7+
+   *
+   * If not provided, the extension will try to extract it from the Prisma client.
+   * You only need to pass this if auto-detection fails.
+   *
+   * @example
+   * // Prisma 7+: No need to pass dmmf
+   * createSoftDeleteExtension({ models: { User: true } })
+   *
+   * // Or explicitly pass it:
+   * import { Prisma } from '@prisma/client'
+   * createSoftDeleteExtension({ models: { User: true }, dmmf: Prisma.dmmf })
+   */
+  dmmf?: BaseDMMF;
 };
