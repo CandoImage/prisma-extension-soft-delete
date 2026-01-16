@@ -1,5 +1,5 @@
 <div align="center">
-<h1>@cando/prisma-extension-soft-delete</h1>
+<h1>@candoimage/prisma-extension-soft-delete</h1>
 
 <p><strong>Prisma 7 compatible</strong> extension for soft deleting records.</p>
 
@@ -78,7 +78,7 @@ This module is distributed via [npm][npm] and should be installed as one of your
 project's dependencies:
 
 ```
-npm install @cando/prisma-extension-soft-delete
+npm install @candoimage/prisma-extension-soft-delete
 ```
 
 `@prisma/client` is a peer dependency of this library, so you will need to
