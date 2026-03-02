@@ -1,12 +1,12 @@
 {
   "name": "@candoimage/prisma-extension-soft-delete",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Prisma extension for soft deleting records - Prisma 7 compatible fork",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "module": "dist/esm/index.js",
   "scripts": {
-    "postinstall": "node scripts/patch-nested-operations.js",
+    "prepublishOnly": "npm run build",
     "build": "npm-run-all build:cjs build:esm",
     "build:cjs": "tsc -p tsconfig.build.json",
     "build:esm": "tsc -p tsconfig.esm.json",
@@ -20,8 +20,7 @@
     "doctoc": "doctoc ."
   },
   "files": [
-    "dist",
-    "scripts"
+    "dist"
   ],
   "keywords": [
     "prisma",
@@ -37,24 +36,24 @@
   ],
   "license": "Apache-2.0",
   "dependencies": {
-    "@prisma/adapter-pg": "^7.1.0",
-    "@roundtreasury/prisma-extension-nested-operations": "1.5.0"
+    "@candoimage/prisma-extension-nested-operations": "^1.6.3"
   },
   "peerDependencies": {
     "@prisma/client": ">=7.0.0"
   },
   "devDependencies": {
-    "@faker-js/faker": "^8.4.1",
-    "@prisma/client": "^7.1.0",
+    "@faker-js/faker": "^10.3.0",
+    "@prisma/adapter-pg": "7.1.0",
+    "@prisma/client": "7.1.0",
     "@types/jest": "^30.0.0",
-    "@typescript-eslint/eslint-plugin": "^8.49.0",
-    "@typescript-eslint/parser": "^8.49.0",
-    "doctoc": "^2.2.1",
-    "eslint": "^9.39.1",
+    "@typescript-eslint/eslint-plugin": "^8.56.1",
+    "@typescript-eslint/parser": "^8.56.1",
+    "doctoc": "^2.3.0",
+    "eslint": "^10.0.2",
     "jest": "^30.2.0",
-    "kcd-scripts": "^16.0.0",
+    "kcd-scripts": "^17.0.0",
     "npm-run-all": "^4.1.5",
-    "prisma": "^7.1.0",
+    "prisma": "7.1.0",
     "semantic-release": "19.0.3",
     "ts-jest": "^29.4.6",
     "ts-node": "^10.9.2",

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export DATABASE_URL=postgres://postgres:123@localhost:5432/test
+export DATABASE_URL=postgres://postgres:123@localhost:5433/test
 
 trap "docker compose down" EXIT
 

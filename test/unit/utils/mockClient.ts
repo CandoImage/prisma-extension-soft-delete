@@ -1,4 +1,5 @@
 import { Prisma } from "../../../prisma/generated/client";
+import { TEST_INLINE_SCHEMA } from "./inlineSchema";
 
 type DelegateByModel<Model extends Prisma.ModelName> = Model extends "User"
   ? Prisma.UserDelegate<any>
@@ -94,6 +95,7 @@ export class MockClient {
   post: MockOperations<"Post">;
   comment: MockOperations<"Comment">;
   extendedClients: Array<MockClient> = [];
+  _engineConfig = { inlineSchema: TEST_INLINE_SCHEMA };
 
   constructor(
     callbacks: Partial<

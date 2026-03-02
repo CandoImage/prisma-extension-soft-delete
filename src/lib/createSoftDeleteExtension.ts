@@ -3,7 +3,7 @@ import type { BaseDMMF } from "@prisma/client/runtime/client";
 import {
   NestedOperation,
   withNestedOperations,
-} from "@roundtreasury/prisma-extension-nested-operations";
+} from "@candoimage/prisma-extension-nested-operations";
 import {
   createAggregateParams,
   createCountParams,
@@ -105,6 +105,8 @@ export function createSoftDeleteExtension({
       );
     }
 
+    const inlineSchema = (client as any)._engineConfig?.inlineSchema as string | undefined;
+
     const context = createContext(dmmf);
 
     const createParamsByModel = Object.keys(modelConfig).reduce<
@@ -161,6 +163,7 @@ export function createSoftDeleteExtension({
           // @ts-ignore - withNestedOperations types not compatible with Prisma 7
           $allOperations: withNestedOperations({
             dmmf,
+            inlineSchema,
             async $rootOperation(initialParams: any) {
               const createParams =
                 createParamsByModel[initialParams.model || ""]?.[
