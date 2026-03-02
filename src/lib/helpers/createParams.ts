@@ -1,4 +1,4 @@
-import { NestedParams } from "@roundtreasury/prisma-extension-nested-operations";
+import { NestedParams } from "@candoimage/prisma-extension-nested-operations";
 
 import type { BaseDMMF } from "@prisma/client/runtime/client";
 import { Context, ModelConfig } from "../types";
