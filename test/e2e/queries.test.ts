@@ -78,7 +78,9 @@ describe("queries", () => {
   });
   afterAll(async () => {
     await testClient.$disconnect();
+    await client.comment.deleteMany({ where: {} });
     await client.user.deleteMany({ where: {} });
+    await client.profile.deleteMany({ where: {} });
   });
 
   describe("delete", () => {
