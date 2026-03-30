@@ -1,6 +1,6 @@
 {
   "name": "@candoimage/prisma-extension-soft-delete",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "description": "Prisma extension for soft deleting records - Prisma 7 compatible fork",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -36,15 +36,15 @@
   ],
   "license": "Apache-2.0",
   "dependencies": {
-    "@candoimage/prisma-extension-nested-operations": "^1.6.3"
+    "@candoimage/prisma-extension-nested-operations": "^1.6.4"
   },
   "peerDependencies": {
     "@prisma/client": ">=7.0.0"
   },
   "devDependencies": {
     "@faker-js/faker": "^10.3.0",
-    "@prisma/adapter-pg": "7.1.0",
-    "@prisma/client": "7.1.0",
+    "@prisma/adapter-pg": "7.6.0",
+    "@prisma/client": "7.6.0",
     "@types/jest": "^30.0.0",
     "@typescript-eslint/eslint-plugin": "^8.56.1",
     "@typescript-eslint/parser": "^8.56.1",
@@ -53,7 +53,7 @@
     "jest": "^30.2.0",
     "kcd-scripts": "^17.0.0",
     "npm-run-all": "^4.1.5",
-    "prisma": "7.1.0",
+    "prisma": "7.6.0",
     "semantic-release": "19.0.3",
     "ts-jest": "^29.4.6",
     "ts-node": "^10.9.2",
