@@ -29,6 +29,37 @@ import { Config, Context, ModelConfig } from "./types";
 import { ModifyResult, modifyReadResult } from "./helpers/modifyResult";
 
 /**
+ * Run an operation the extension rewrote, for example a `delete` turned into an `update`.
+ *
+ * The rewritten operation has to reach the database on the same connection as the original one.
+ * Calling `client.model.operation()` would leave an interactive transaction, because that client is
+ * the one the extension was built on and knows nothing about the transaction the caller opened. The
+ * soft delete would then be committed on its own and survive a rollback.
+ *
+ * Prisma passes the transaction it is running in through `__internalParams`. Handing those back to
+ * `_request` with the new action keeps the operation inside it. Clients without `_request` fall back
+ * to the model call, which still writes but does not join the transaction.
+ */
+async function runChangedOperation(
+  client: any,
+  initialParams: any,
+  params: { model?: PropertyKey; operation: string; args: any }
+): Promise<any> {
+  const internalParams = initialParams.__internalParams;
+
+  if (typeof client._request === "function" && internalParams) {
+    return client._request({
+      ...internalParams,
+      action: params.operation,
+      args: params.args,
+    });
+  }
+
+  const model = params.model as string;
+  return client[model[0].toLowerCase() + model.slice(1)][params.operation](params.args);
+}
+
+/**
  * Extract DMMF from Prisma client instance
  */
 function extractDmmfFromClient(client: any): BaseDMMF | null {
@@ -173,16 +204,12 @@ export function createSoftDeleteExtension({
               if (!createParams) return initialParams.query(initialParams.args);
 
               const { params, ctx } = createParams(initialParams);
-              const { model } = params;
 
               const operationChanged =
                 params.operation !== initialParams.operation;
 
               const result = operationChanged
-                ? // @ts-ignore - dynamic model access
-                  await (client as any)[model[0].toLowerCase() + model.slice(1)][
-                    params.operation
-                  ](params.args)
+                ? await runChangedOperation(client, initialParams, params)
                 : await params.query(params.args);
 
               const modifyResult =
